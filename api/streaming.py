@@ -15050,16 +15050,24 @@ def _run_agent_streaming(
 
                 # ── Handle context compression side effects ──
                 # Also detect compression via the result dict or compressor state
+                _compressor = getattr(agent, 'context_compressor', None)
                 if not _compressed:
-                    _compressor = getattr(agent, 'context_compressor', None)
                     if _compressor and getattr(_compressor, 'compression_count', 0) > _pre_compression_count:
                         _compressed = True
                 # Notify the frontend that compression happened
                 if _compressed:
-                    s.context_messages = _prune_context_tool_results_after_compression(
-                        agent,
-                        s.context_messages,
-                    )
+                    # Non-native engines own their post-compression budget; the hard pruner would destroy their ref markers.
+                    try:
+                        from hermes_cli.config import load_config
+                        from hermes_cli.plugins_discovery import cfg_get
+                        _ctx_engine = cfg_get(load_config(), 'context', 'engine', default='compressor')
+                    except Exception:
+                        _ctx_engine = 'compressor'
+                    if _ctx_engine == 'compressor':
+                        s.context_messages = _prune_context_tool_results_after_compression(
+                            agent,
+                            s.context_messages,
+                        )
                     s.post_compression_context_tokens_estimate = _estimate_post_compression_context_tokens(
                         agent,
                         s.context_messages,
