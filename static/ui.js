@@ -8936,7 +8936,7 @@ function renderMd(raw){
         }
       }
       const renderedContent=renderMd(content.trim());
-      _det_stash.push(`<details><summary>${summary}</summary>${renderedContent}</details>`);
+      _det_stash.push(`<details class="det-collapsible"><summary><em>${summary}</em></summary>${renderedContent}</details>`);
       out.push('');
       out.push('\x00J'+(_det_stash.length-1)+'\x00');
       out.push('');
