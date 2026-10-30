@@ -2558,6 +2558,7 @@
   .tree-comma{color:var(--muted);}
   .tree-item{line-height:1.6;}
   .msg-body blockquote{border-left:3px solid var(--blue);padding-left:14px;color:var(--muted);font-style:italic;margin:10px 0;}
+  .det-collapsible{border-left:3px solid var(--blue);padding-left:14px;margin:10px 0;background:rgba(0,0,0,.02);}
   .msg-body blockquote p{margin:0;}
   .msg-body a{color:var(--blue);text-decoration:underline;}
   .msg-body hr{border:none;border-top:1px solid var(--border);margin:14px 0;}

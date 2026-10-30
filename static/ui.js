@@ -8915,6 +8915,71 @@ function renderMd(raw){
     flush(lines.length);
     return out.join('\n');
   })(s);
+  const _det_stash=[];
+  s=(function(_apply_details){
+    const lines=s.split('\n');
+    const out=[];
+    const flushDet=(block)=>{
+      let summary='Details';
+      let content=block.replace(/^[\s\S]*?<details\b[^>]*>/i,'').replace(/<\/details\s*>[\s\S]*$/i,'');
+      const summaryMatch=content.match(/<summary\b[^>]*>([\s\S]*?)<\/summary>/i);
+      if(summaryMatch){
+        summary=esc(summaryMatch[1].trim()||'Details');
+        content=content.replace(summaryMatch[0],'');
+      } else {
+        const firstLine=content.split('\n').find(l=>l.trim());
+        if(firstLine){
+          summary=esc(firstLine.substring(0,500).trim()||'Details');
+          content=content.replace(firstLine,'').trim();
+        } else {
+          summary='Details';
+        }
+      }
+      const renderedContent=renderMd(content.trim());
+      _det_stash.push(`<details><summary>${summary}</summary>${renderedContent}</details>`);
+      out.push('');
+      out.push('\x00J'+(_det_stash.length-1)+'\x00');
+      out.push('');
+    };
+    let depth=0, start=-1;
+    let inFence=false, fenceLen=0;
+    for(let i=0;i<lines.length;i++){
+      const line=lines[i];
+      if(inFence){
+        out.push(line);
+        if(_isBacktickFenceClose(line,fenceLen)){inFence=false;fenceLen=0;}
+        continue;
+      }
+      const fenceOpen=_matchBacktickFenceLine(line);
+      if(fenceOpen){
+        out.push(line);
+        inFence=true;
+        fenceLen=fenceOpen.len;
+        continue;
+      }
+      if(depth===0){
+        if(/<details\b/i.test(line)){
+          start=i;
+          depth=(line.match(/<details\b/gi)||[]).length-(line.match(/<\/details\s*>/gi)||[]).length;
+          if(depth===0){
+            flushDet(lines.slice(start,i+1).join('\n'));
+          }
+        } else {
+          out.push(line);
+        }
+      } else {
+        const open=(line.match(/<details\b/gi)||[]).length;
+        const close=(line.match(/<\/details\s*>/gi)||[]).length;
+        depth+=open-close;
+        if(depth===0){
+          flushDet(lines.slice(start,i+1).join('\n'));
+        }
+      }
+    }
+    if(depth>0) return lines.join('\n');
+    return out.join('\n');
+  })(s);
+
   // ── MEDIA: token stash (must run first, before any other processing) ───────
   // Detect MEDIA:<path-or-url> tokens emitted by the agent (e.g. screenshots,
   // generated images) and replace them with inline <img> or download links.
@@ -9643,6 +9708,7 @@ function renderMd(raw){
   s=s.replace(/\x00D(\d+)\x00/g,(_,i)=>_inlineMediaHtmlForRef(media_stash[+i]));
 
   // ── End MEDIA restore ──────────────────────────────────────────────────────
+  s=s.replace(/\x00J(\d+)\x00/g,(_,i)=>_det_stash[+i]);
   // Restore blockquote stash. Done last so the inner HTML (already produced
   // by the recursive renderMd in the pre-pass) is dropped into the final
   // string verbatim — no further passes can mangle it.
